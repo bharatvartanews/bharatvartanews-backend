@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Bharat Varta Backend
 
 ## Stack
