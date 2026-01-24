@@ -1,0 +1,216 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//////////////////////////////////////////////////////
+// ENUMS
+//////////////////////////////////////////////////////
+
+enum Role {
+  SUPER_ADMIN
+  EDITOR
+  REPORTER
+}
+
+enum ArticleStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+}
+
+enum VideoStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+//////////////////////////////////////////////////////
+// USERS
+//////////////////////////////////////////////////////
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  articles  Article[]
+  comments  Comment[]
+
+  @@index([role])
+  @@index([active])
+}
+
+//////////////////////////////////////////////////////
+// CATEGORIES
+//////////////////////////////////////////////////////
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  icon      String? 
+  active    Boolean  @default(true)
+  deletedAt DateTime?
+
+  articles  Article[]
+
+  @@index([slug])
+  @@index([active])
+  @@index([deletedAt])
+}
+
+//////////////////////////////////////////////////////
+// ARTICLES
+//////////////////////////////////////////////////////
+
+model Article {
+  id         Int            @id @default(autoincrement())
+  title      String
+  slug       String         @unique
+  body       String
+  status     ArticleStatus
+  categoryId Int
+  authorId   Int
+
+  image      String?
+  video      String?
+
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  deletedAt  DateTime?
+
+  category   Category @relation(fields: [categoryId], references: [id])
+  author     User     @relation(fields: [authorId], references: [id])
+
+  views      ArticleView[]
+  comments  Comment[]
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([authorId])
+  @@index([deletedAt])
+  @@index([createdAt])
+}
+
+//////////////////////////////////////////////////////
+// VIDEOS
+//////////////////////////////////////////////////////
+
+model Video {
+  id        Int         @id @default(autoincrement())
+  title     String
+  url       String
+  status    VideoStatus
+  createdAt DateTime    @default(now())
+  deletedAt DateTime?
+
+  views     VideoView[]
+
+  @@index([status])
+  @@index([deletedAt])
+  @@index([createdAt])
+}
+
+//////////////////////////////////////////////////////
+// MEDIA (UPLOADS)
+//////////////////////////////////////////////////////
+
+model Media {
+  id        Int       @id @default(autoincrement())
+  type      MediaType
+  path      String
+  createdAt DateTime  @default(now())
+
+  @@index([type])
+}
+
+//////////////////////////////////////////////////////
+// ANALYTICS — FULL TRAFFIC
+//////////////////////////////////////////////////////
+
+model PageView {
+  id        Int      @id @default(autoincrement())
+  path      String
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([path])
+  @@index([createdAt])
+}
+
+model ArticleView {
+  id        Int      @id @default(autoincrement())
+  articleId Int
+  createdAt DateTime @default(now())
+
+  article   Article @relation(fields: [articleId], references: [id])
+
+  @@index([articleId])
+  @@index([createdAt])
+}
+
+model VideoView {
+  id        Int      @id @default(autoincrement())
+  videoId   Int
+  createdAt DateTime @default(now())
+
+  video     Video @relation(fields: [videoId], references: [id])
+
+  @@index([videoId])
+  @@index([createdAt])
+}
+
+//////////////////////////////////////////////////////
+// SETTINGS (SINGLE JSON BLOB)
+//////////////////////////////////////////////////////
+
+model Setting {
+  id   Int  @id @default(1)
+  data Json
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  articleId Int
+  userId    Int?
+  ownerKey  String?
+  parentId  Int?
+  createdAt DateTime @default(now())
+  reports   CommentReport[]
+
+  article   Article  @relation(fields: [articleId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model Share {
+  id        Int      @id @default(autoincrement())
+  articleId Int
+  platform  String
+  createdAt DateTime @default(now())
+}
+model CommentReport {
+  id        Int      @id @default(autoincrement())
+  commentId Int
+  reason    String?
+  createdAt DateTime @default(now())
+
+  comment   Comment @relation(fields: [commentId], references: [id])
+
+  @@index([commentId])
+}
