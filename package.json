@@ -5,13 +5,14 @@
   "scripts": {
   "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
 
-  "build": "npx prisma generate && npx tsc",
+  "build": "node ./node_modules/prisma/build/index.js generate && npx tsc",
   "start": "node dist/server.js",
 
-  "prisma:generate": "npx prisma generate",
-  "prisma:migrate:dev": "npx prisma migrate dev",
-  "prisma:migrate:deploy": "npx prisma migrate deploy"
+  "prisma:generate": "node ./node_modules/prisma/build/index.js generate",
+  "prisma:migrate:deploy": "node ./node_modules/prisma/build/index.js migrate deploy",
+  "prisma:migrate:dev": "npx prisma migrate dev"
 }
+
 ,
   "prisma": {
     "seed": "ts-node prisma/seed-all.ts"
