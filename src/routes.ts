@@ -159,8 +159,25 @@ router.get('/api/articles/slug/:slug', Articles.getArticleBySlug);
 //
 router.get('/api/videos', Videos.listVideos); // public
 router.get('/api/videos/:id', Videos.getVideoById); // public
-router.post('/api/videos', requireAuth, Videos.createVideo);
-router.put('/api/videos/:id', requireAuth, Videos.updateVideo);
+
+
+// router.post('/api/videos', requireAuth, Videos.createVideo);
+// router.put('/api/videos/:id', requireAuth, Videos.updateVideo);
+import { videoUpload } from "./utils/upload";
+
+router.post(
+  "/api/videos",
+  videoUpload.single("video"), // ✅ expects FormData field name "video"
+  Videos.createVideo
+);
+
+router.put(
+  "/api/videos/:id",
+  videoUpload.single("video"),
+  Videos.updateVideo
+);
+
+
 router.delete('/api/videos/:id', requireAuth, Videos.deleteVideo);
 
 //
