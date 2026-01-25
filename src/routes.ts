@@ -86,33 +86,67 @@ router.get('/api/articles/:id', Articles.getArticleById); // public
 
 import { formDataOnly } from './utils/upload';
 
+// router.post(
+//   '/api/articles',
+//   (req, _res, next) => {
+//     console.log('🔥 BEFORE MULTER');
+//     next();
+//   },
+//   formDataOnly,
+//   (req, _res, next) => {
+//     console.log('🔥 AFTER MULTER BODY:', req.body);
+//     next();
+//   },
+//   Articles.createArticle
+// );
+
+// router.put(
+//   '/api/articles/:id',
+//   (req, _res, next) => {
+//     console.log('🔥 BEFORE MULTER');
+//     next();
+//   },
+//   formDataOnly,
+//   (req, _res, next) => {
+//     console.log('🔥 AFTER MULTER BODY:', req.body);
+//     next();
+//   },
+//   Articles.updateArticle
+// );
+
+import { articleUpload } from "./utils/upload";
+
 router.post(
-  '/api/articles',
+  "/api/articles",
   (req, _res, next) => {
-    console.log('🔥 BEFORE MULTER');
+    console.log("🔥 BEFORE MULTER");
     next();
   },
-  formDataOnly,
+  articleUpload,
   (req, _res, next) => {
-    console.log('🔥 AFTER MULTER BODY:', req.body);
+    console.log("🔥 AFTER MULTER BODY:", req.body);
+    console.log("🔥 AFTER MULTER FILES:", req.files);
     next();
   },
   Articles.createArticle
 );
 
 router.put(
-  '/api/articles/:id',
+  "/api/articles/:id",
   (req, _res, next) => {
-    console.log('🔥 BEFORE MULTER');
+    console.log("🔥 BEFORE MULTER");
     next();
   },
-  formDataOnly,
+  articleUpload,
   (req, _res, next) => {
-    console.log('🔥 AFTER MULTER BODY:', req.body);
+    console.log("🔥 AFTER MULTER BODY:", req.body);
+    console.log("🔥 AFTER MULTER FILES:", req.files);
     next();
   },
   Articles.updateArticle
 );
+
+
 
 // router.put('/api/articles/:id',  Articles.updateArticle);
 router.delete('/api/articles/:id',  Articles.deleteArticle);

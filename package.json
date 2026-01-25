@@ -3,24 +3,20 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-  "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-
-  "build": "node ./node_modules/prisma/build/index.js generate && node ./node_modules/typescript/bin/tsc"
-,
-  "start": "node dist/server.js",
-
-  "prisma:generate": "node ./node_modules/prisma/build/index.js generate",
-  "prisma:migrate:deploy": "node ./node_modules/prisma/build/index.js migrate deploy",
-  "prisma:migrate:dev": "npx prisma migrate dev"
-}
-
-,
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "node ./node_modules/prisma/build/index.js generate && node ./node_modules/typescript/bin/tsc",
+    "start": "node dist/server.js",
+    "prisma:generate": "node ./node_modules/prisma/build/index.js generate",
+    "prisma:migrate:deploy": "node ./node_modules/prisma/build/index.js migrate deploy",
+    "prisma:migrate:dev": "npx prisma migrate dev"
+  },
   "prisma": {
     "seed": "ts-node prisma/seed-all.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.9.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
@@ -28,9 +24,9 @@
     "multer": "^1.4.5-lts.1",
     "prisma": "^5.22.0",
     "slugify": "^1.6.6",
+    "streamifier": "^0.1.1",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3"
-
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

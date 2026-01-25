@@ -20,6 +20,15 @@ export const videoUpload = multer({
   })
 });
 
+
+export const articleUpload = multer({
+  storage: multer.memoryStorage(),
+}).fields([
+  { name: "image", maxCount: 1 },
+  { name: "video", maxCount: 1 },
+  { name: "audio", maxCount: 1 },
+]);
+
 // export const categoryIconUpload = multer({
 //   storage: multer.diskStorage({
 //     destination: (_req, _file, cb) => {
