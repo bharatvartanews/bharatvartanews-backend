@@ -113,7 +113,7 @@ model Article {
 model Video {
   id        Int         @id @default(autoincrement())
   title     String
-  url       String
+  url       String?
   status    VideoStatus
   createdAt DateTime    @default(now())
   deletedAt DateTime?
