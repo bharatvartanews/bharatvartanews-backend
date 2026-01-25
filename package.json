@@ -3,16 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+  "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
 
-    "prisma:generate": "npx prisma generate",
-    "prisma:migrate:dev": "npx prisma migrate dev",
-    "prisma:migrate:deploy": "npx prisma migrate deploy",
+  "build": "npx prisma generate && npx tsc",
+  "start": "node dist/server.js",
 
-    "build": "echo \"skip build\"",
-
-    "start": "tsx src/server.ts"
-  },
+  "prisma:generate": "npx prisma generate",
+  "prisma:migrate:dev": "npx prisma migrate dev",
+  "prisma:migrate:deploy": "npx prisma migrate deploy"
+}
+,
   "prisma": {
     "seed": "ts-node prisma/seed-all.ts"
   },
