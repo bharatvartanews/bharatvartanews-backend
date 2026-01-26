@@ -389,7 +389,7 @@ export async function listArticles(req: Request, res: Response) {
       return {
         ...a,
         ...toLegacyMedia(images, videos),
-        displayAuthor: a.authorName || a.author?.name || `User #${a.authorId}`,
+        displayAuthor: a.author?.name || `User #${a.authorId}`,
         ownerId: a.authorId,
       };
     });
@@ -405,68 +405,79 @@ export async function listArticles(req: Request, res: Response) {
 /* ---------------- GET BY ID ---------------- */
 export async function getArticleById(req: Request, res: Response) {
   try {
-    const rawId = req.params.id;
-    const id = Number(rawId);
+    const id = Number(req.params.id);
 
-    if (!rawId || Number.isNaN(id) || id <= 0) {
+    if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ message: "Invalid article id" });
     }
 
-    const article = await prisma.article.findUnique({
-      where: { id },
+    const article = await prisma.article.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
       include: {
-        category: true,
-        author: { select: { id: true, name: true } }, // if relation exists
+        category: { select: { id: true, name: true, slug: true } },
+        author: { select: { id: true, name: true } },
       },
     });
 
-    if (!article || article.deletedAt) {
+    if (!article) {
       return res.status(404).json({ message: "Article not found" });
     }
 
+    const images = safeParseJsonStringArray((article as any).image);
+    const videos = safeParseJsonStringArray((article as any).video);
+
     return res.json({
-      ...article,
-
-      // ✅ Always return arrays for frontend safety
-      image: safeParseJsonStringArray((article as any).image),
-      video: safeParseJsonStringArray((article as any).video),
-
-      // ✅ displayAuthor for admin/web
-      displayAuthor:
-        (article as any).authorName ||
-        (article as any).author?.name ||
-        `User #${(article as any).authorId}`,
-
-      // ✅ ownerId needed for admin permission logic
+      ...(article as any),
+      ...toLegacyMedia(images, videos),
+      displayAuthor: (article as any).author?.name || `User #${(article as any).authorId}`,
       ownerId: (article as any).authorId,
     });
-  } catch (err) {
-    console.error("getArticleById error:", err);
-    return res.status(500).json({ message: "Failed to fetch article" });
+  } catch (e) {
+    console.error("getArticleById error:", e);
+    res.status(500).json({ message: "Failed to fetch article" });
   }
 }
+
 
 /* ---------------- GET BY SLUG ---------------- */
 export async function getArticleBySlug(req: Request, res: Response) {
-  const { slug } = req.params;
+  try {
+    const { slug } = req.params;
 
-  const article = await prisma.article.findUnique({
-    where: { slug },
-    include: { category: true },
-  });
+    const article = await prisma.article.findFirst({
+      where: {
+        slug,
+        deletedAt: null,
+      },
+      include: {
+        category: { select: { id: true, name: true, slug: true } },
+        author: { select: { id: true, name: true } },
+      },
+    });
 
-  if (!article || article.deletedAt) {
-    return res.status(404).json({ message: "Article not found" });
+    if (!article) {
+      return res.status(404).json({ message: "Article not found" });
+    }
+
+    // ✅ safe media mapping
+    const images = safeParseJsonStringArray((article as any).image);
+    const videos = safeParseJsonStringArray((article as any).video);
+
+    return res.json({
+      ...(article as any),
+      ...toLegacyMedia(images, videos),
+      displayAuthor: (article as any).author?.name || `User #${(article as any).authorId}`,
+      ownerId: (article as any).authorId,
+    });
+  } catch (e) {
+    console.error("getArticleBySlug error:", e);
+    res.status(500).json({ message: "Failed to fetch article" });
   }
-
-  res.json({
-    ...article,
-    image: safeParseJsonStringArray((article as any).image),
-    video: safeParseJsonStringArray((article as any).video),
-    displayAuthor: (article as any).authorName || `User #${(article as any).authorId}`,
-    ownerId: (article as any).authorId,
-  });
 }
+
 
 
 /* ---------------- CREATE ---------------- */
