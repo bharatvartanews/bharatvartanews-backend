@@ -24,9 +24,9 @@ export const videoUpload = multer({
 export const articleUpload = multer({
   storage: multer.memoryStorage(),
 }).fields([
-  { name: "image", maxCount: 1 },
-  { name: "video", maxCount: 1 },
-  { name: "audio", maxCount: 1 },
+  { name: "image", maxCount: 10 },
+  { name: "video", maxCount: 5 },
+  { name: "audio", maxCount: 3 },
 ]);
 
 // export const categoryIconUpload = multer({

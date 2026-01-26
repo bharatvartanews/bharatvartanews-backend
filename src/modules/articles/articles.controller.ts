@@ -17,9 +17,33 @@ async function uploadToCloudinary(file: Express.Multer.File, folder: string) {
   return res.secure_url;
 }
 
+/* ---------------- PARSE HELPERS ---------------- */
+function safeParseArray(val: any): string[] {
+  if (!val) return [];
 
+  // if already array from FormData imageUrls[]
+  if (Array.isArray(val)) return val.filter(Boolean).map(String);
 
+  // if single string
+  if (typeof val === "string") return val.trim() ? [val.trim()] : [];
 
+  return [];
+}
+
+// If DB stored JSON string for image/video
+function safeParseJsonStringArray(val: any): string[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val !== "string") return [];
+
+  try {
+    const parsed = JSON.parse(val);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    // fallback: treat as single url string
+    return val.trim() ? [val.trim()] : [];
+  }
+}
 export async function listArticles(req: Request, res: Response) {
   const { status, categoryId, q } = req.query;
 
@@ -29,35 +53,165 @@ export async function listArticles(req: Request, res: Response) {
       ...(status && { status: status as any }),
       ...(categoryId && { categoryId: Number(categoryId) }),
       ...(q && {
-        title: { contains: String(q), mode: 'insensitive' }
-      })
+        title: { contains: String(q), mode: "insensitive" },
+      }),
     },
-    orderBy: { createdAt: 'desc' }
+    include: {
+      author: {
+        select: { id: true, name: true, email: true },
+      },
+      category: {
+        select: { id: true, name: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
   });
 
-  res.json(articles);
+  // Optional: auto convert image/video json to arrays for frontend
+  const fixed = articles.map((a: any) => ({
+    ...a,
+    images: safeParseJsonStringArray(a.image),
+    videos: safeParseJsonStringArray(a.video),
+    displayAuthor: a.authorName || a.author?.name || "—",
+    ownerId: a.authorId,
+  }));
+
+  res.json(fixed);
 }
 
+
+// export async function listArticles(req: Request, res: Response) {
+//   const { status, categoryId, q } = req.query;
+
+//   const articles = await prisma.article.findMany({
+//     where: {
+//       deletedAt: null,
+//       ...(status && { status: status as any }),
+//       ...(categoryId && { categoryId: Number(categoryId) }),
+//       ...(q && {
+//         title: { contains: String(q), mode: 'insensitive' }
+//       })
+//     },
+//     orderBy: { createdAt: 'desc' }
+//   });
+
+//   res.json(articles);
+// }
+
+// export async function getArticleById(req: Request, res: Response) {
+//   const rawId = req.params.id;
+//   const id = Number(rawId);
+
+//   if (!rawId || Number.isNaN(id)) {
+//     return res.status(400).json({ message: 'Invalid article id' });
+//   }
+
+//   const article = await prisma.article.findUnique({
+//     where: { id },
+//   });
+
+//   if (!article || article.deletedAt) {
+//     return res.status(404).json(null);
+//   }
+
+//   res.json(article);
+// }
 export async function getArticleById(req: Request, res: Response) {
   const rawId = req.params.id;
   const id = Number(rawId);
 
   if (!rawId || Number.isNaN(id)) {
-    return res.status(400).json({ message: 'Invalid article id' });
+    return res.status(400).json({ message: "Invalid article id" });
   }
 
   const article = await prisma.article.findUnique({
     where: { id },
+    include: {
+      author: { select: { id: true, name: true } },
+      category: true,
+    },
   });
 
   if (!article || article.deletedAt) {
     return res.status(404).json(null);
   }
 
+  res.json({
+    ...article,
+    images: safeParseJsonStringArray((article as any).image),
+    videos: safeParseJsonStringArray((article as any).video),
+     displayAuthor: (article as any).authorName || (article as any).author?.name || "—",
+    ownerId: (article as any).authorId,
+  });
+}
+/* ---------------- CREATE ARTICLE (MULTIPLE MEDIA) ---------------- */
+export async function createArticle(req: Request, res: Response) {
+  const { title, content, action, categoryId, authorId,authorName } = req.body;
+
+  if (!title) return res.status(400).json({ message: "Title is required" });
+  if (!content) return res.status(400).json({ message: "Content is required" });
+  if (!categoryId) return res.status(400).json({ message: "Category is required" });
+
+  const status =
+    action === "publish"
+      ? "PUBLISHED"
+      : action === "review"
+      ? "REVIEW"
+      : "DRAFT";
+
+  const baseSlug = slugify(title, { lower: true, strict: true });
+  const slug = `${baseSlug}-${Date.now().toString(36)}`;
+
+  const files = req.files as {
+    [fieldname: string]: Express.Multer.File[];
+  };
+
+  // ✅ URL arrays
+  const urlImages = safeParseArray(req.body.imageUrls);
+  const urlVideos = safeParseArray(req.body.videoUrls);
+
+  // ✅ Upload arrays
+  const uploadedImages: string[] = [];
+  const uploadedVideos: string[] = [];
+
+  if (files?.images?.length) {
+    for (const f of files.images) {
+      uploadedImages.push(
+        await uploadToCloudinary(f, "bharatvarta/articles/images")
+      );
+    }
+  }
+
+  if (files?.videos?.length) {
+    for (const f of files.videos) {
+      uploadedVideos.push(
+        await uploadToCloudinary(f, "bharatvarta/articles/videos")
+      );
+    }
+  }
+
+  const finalImages = [...urlImages, ...uploadedImages];
+  const finalVideos = [...urlVideos, ...uploadedVideos];
+
+  const article = await prisma.article.create({
+    data: {
+      title,
+      slug,
+      body: content,
+      status,
+      authorName: authorName?.trim() || null,
+
+      // ✅ store json string in old columns (so DB doesn't break)
+      image: finalImages.length ? JSON.stringify(finalImages) : null,
+      video: finalVideos.length ? JSON.stringify(finalVideos) : null,
+
+      category: { connect: { id: Number(categoryId) } },
+      author: { connect: { id: Number(authorId || 1) } },
+    },
+  });
+
   res.json(article);
 }
-
-
 // export async function createArticle(req: Request, res: Response) {
 //   const {
 //     title,
@@ -114,71 +268,72 @@ export async function getArticleById(req: Request, res: Response) {
 
 //   res.json(article);
 // }
-export async function createArticle(req: Request, res: Response) {
-  const {
-    title,
-    content,
-    action,
-    imageUrl,
-    videoUrl,
-    categoryId,
-    authorId,
-  } = req.body;
+// export async function createArticle(req: Request, res: Response) {
+  
+//   const {
+//     title,
+//     content,
+//     action,
+//     imageUrl,
+//     videoUrl,
+//     categoryId,
+//     authorId,
+//   } = req.body;
 
-  console.log("BODY:", req.body);
+//   console.log("BODY:", req.body);
 
-  if (!title) return res.status(400).json({ message: "Title is required" });
-  if (!content) return res.status(400).json({ message: "Content is required" });
-  if (!categoryId) return res.status(400).json({ message: "Category is required" });
+//   if (!title) return res.status(400).json({ message: "Title is required" });
+//   if (!content) return res.status(400).json({ message: "Content is required" });
+//   if (!categoryId) return res.status(400).json({ message: "Category is required" });
 
-  const status =
-    action === "publish"
-      ? "PUBLISHED"
-      : action === "review"
-      ? "REVIEW"
-      : "DRAFT";
+//   const status =
+//     action === "publish"
+//       ? "PUBLISHED"
+//       : action === "review"
+//       ? "REVIEW"
+//       : "DRAFT";
 
-  // ✅ unique slug
-  const baseSlug = slugify(title, { lower: true, strict: true });
-  const slug = `${baseSlug}-${Date.now().toString(36)}`;
+//   // ✅ unique slug
+//   const baseSlug = slugify(title, { lower: true, strict: true });
+//   const slug = `${baseSlug}-${Date.now().toString(36)}`;
 
-  // ✅ multer fields
-  const files = req.files as {
-    [fieldname: string]: Express.Multer.File[];
-  };
+//   // ✅ multer fields
+//   const files = req.files as {
+//     [fieldname: string]: Express.Multer.File[];
+//   };
 
-  let finalImage = imageUrl || null;
-  let finalVideo = videoUrl || null;
+//   let finalImage = imageUrl || null;
+//   let finalVideo = videoUrl || null;
 
-  // ✅ if uploaded file, upload to cloudinary
-  if (files?.image?.[0]) {
-    finalImage = await uploadToCloudinary(files.image[0], "bharatvarta/articles/images");
-  }
+//   // ✅ if uploaded file, upload to cloudinary
+//   if (files?.image?.[0]) {
+//     finalImage = await uploadToCloudinary(files.image[0], "bharatvarta/articles/images");
+//   }
 
-  if (files?.video?.[0]) {
-    finalVideo = await uploadToCloudinary(files.video[0], "bharatvarta/articles/videos");
-  }
+//   if (files?.video?.[0]) {
+//     finalVideo = await uploadToCloudinary(files.video[0], "bharatvarta/articles/videos");
+//   }
 
-  const article = await prisma.article.create({
-    data: {
-      title,
-      slug,
-      body: content,
-      status,
-      image: finalImage,
-      video: finalVideo,
+//   const article = await prisma.article.create({
+//     data: {
+//       title,
+//       slug,
+//       body: content,
+//       status,
+//       image: finalImage,
+//       video: finalVideo,
 
-      category: {
-        connect: { id: Number(categoryId) },
-      },
-      author: {
-        connect: { id: Number(authorId || 1) },
-      },
-    },
-  });
+//       category: {
+//         connect: { id: Number(categoryId) },
+//       },
+//       author: {
+//         connect: { id: Number(authorId || 1) },
+//       },
+//     },
+//   });
 
-  res.json(article);
-}
+//   res.json(article);
+// }
 
 
 // export async function updateArticle(req: Request, res: Response) {
@@ -285,21 +440,89 @@ export async function createArticle(req: Request, res: Response) {
 
 //   res.json(article);
 // }
+// export async function updateArticle(req: Request, res: Response) {
+//   const id = Number(req.params.id);
+//   if (!id || Number.isNaN(id)) {
+//     return res.status(400).json({ message: "Invalid article id" });
+//   }
+
+//   const {
+//     title,
+//     content,
+//     action,
+//     imageUrl,
+//     videoUrl,
+//     categoryId,
+//     authorId,
+//   } = req.body;
+
+//   const files = req.files as {
+//     [fieldname: string]: Express.Multer.File[];
+//   };
+
+//   const data: any = {};
+
+//   if (title) {
+//     data.title = title;
+
+//     // ✅ keep unique slug for update too
+//     const baseSlug = slugify(title, { lower: true, strict: true });
+//     data.slug = `${baseSlug}-${Date.now().toString(36)}`;
+//   }
+
+//   if (content) {
+//     data.body = content;
+//   }
+
+//   if (action) {
+//     data.status =
+//       action === "publish"
+//         ? "PUBLISHED"
+//         : action === "review"
+//         ? "REVIEW"
+//         : "DRAFT";
+//   }
+
+//   // ✅ if user typed url, update
+//   if (imageUrl !== undefined) {
+//     data.image = imageUrl || null;
+//   }
+//   if (videoUrl !== undefined) {
+//     data.video = videoUrl || null;
+//   }
+
+//   // ✅ if file uploaded, override url and upload to cloudinary
+//   if (files?.image?.[0]) {
+//     data.image = await uploadToCloudinary(files.image[0], "bharatvarta/articles/images");
+//   }
+
+//   if (files?.video?.[0]) {
+//     data.video = await uploadToCloudinary(files.video[0], "bharatvarta/articles/videos");
+//   }
+
+//   if (categoryId) {
+//     data.category = { connect: { id: Number(categoryId) } };
+//   }
+
+//   if (authorId) {
+//     data.author = { connect: { id: Number(authorId) } };
+//   }
+
+//   const article = await prisma.article.update({
+//     where: { id },
+//     data,
+//   });
+
+//   res.json(article);
+// }
+
 export async function updateArticle(req: Request, res: Response) {
   const id = Number(req.params.id);
   if (!id || Number.isNaN(id)) {
     return res.status(400).json({ message: "Invalid article id" });
   }
 
-  const {
-    title,
-    content,
-    action,
-    imageUrl,
-    videoUrl,
-    categoryId,
-    authorId,
-  } = req.body;
+  const { title, content, action, categoryId, authorId,authorName } = req.body;
 
   const files = req.files as {
     [fieldname: string]: Express.Multer.File[];
@@ -309,15 +532,11 @@ export async function updateArticle(req: Request, res: Response) {
 
   if (title) {
     data.title = title;
-
-    // ✅ keep unique slug for update too
     const baseSlug = slugify(title, { lower: true, strict: true });
     data.slug = `${baseSlug}-${Date.now().toString(36)}`;
   }
 
-  if (content) {
-    data.body = content;
-  }
+  if (content) data.body = content;
 
   if (action) {
     data.status =
@@ -328,30 +547,59 @@ export async function updateArticle(req: Request, res: Response) {
         : "DRAFT";
   }
 
-  // ✅ if user typed url, update
-  if (imageUrl !== undefined) {
-    data.image = imageUrl || null;
-  }
-  if (videoUrl !== undefined) {
-    data.video = videoUrl || null;
-  }
-
-  // ✅ if file uploaded, override url and upload to cloudinary
-  if (files?.image?.[0]) {
-    data.image = await uploadToCloudinary(files.image[0], "bharatvarta/articles/images");
+  if (categoryId) data.category = { connect: { id: Number(categoryId) } };
+  if (authorId) data.author = { connect: { id: Number(authorId) } };
+   // ✅ update manual author name
+  if (authorName !== undefined) {
+    data.authorName = authorName?.trim() || null;
   }
 
-  if (files?.video?.[0]) {
-    data.video = await uploadToCloudinary(files.video[0], "bharatvarta/articles/videos");
+  // ✅ previous stored media (optional keep)
+  const existing = await prisma.article.findUnique({
+    where: { id },
+    select: { image: true, video: true },
+  });
+
+  const oldImages = safeParseJsonStringArray(existing?.image);
+  const oldVideos = safeParseJsonStringArray(existing?.video);
+
+  // ✅ URL arrays from request
+  const urlImages = safeParseArray(req.body.imageUrls);
+  const urlVideos = safeParseArray(req.body.videoUrls);
+
+  // ✅ Upload arrays
+  const uploadedImages: string[] = [];
+  const uploadedVideos: string[] = [];
+
+  if (files?.images?.length) {
+    for (const f of files.images) {
+      uploadedImages.push(
+        await uploadToCloudinary(f, "bharatvarta/articles/images")
+      );
+    }
   }
 
-  if (categoryId) {
-    data.category = { connect: { id: Number(categoryId) } };
+  if (files?.videos?.length) {
+    for (const f of files.videos) {
+      uploadedVideos.push(
+        await uploadToCloudinary(f, "bharatvarta/articles/videos")
+      );
+    }
   }
 
-  if (authorId) {
-    data.author = { connect: { id: Number(authorId) } };
-  }
+  /**
+   * ✅ Update Logic:
+   * - If user sends any new media (url/uploads), we REPLACE old
+   * - Otherwise keep old
+   */
+  const newFinalImages =
+    urlImages.length || uploadedImages.length ? [...urlImages, ...uploadedImages] : oldImages;
+
+  const newFinalVideos =
+    urlVideos.length || uploadedVideos.length ? [...urlVideos, ...uploadedVideos] : oldVideos;
+
+  data.image = newFinalImages.length ? JSON.stringify(newFinalImages) : null;
+  data.video = newFinalVideos.length ? JSON.stringify(newFinalVideos) : null;
 
   const article = await prisma.article.update({
     where: { id },
@@ -360,7 +608,6 @@ export async function updateArticle(req: Request, res: Response) {
 
   res.json(article);
 }
-
 export async function deleteArticle(req: Request, res: Response) {
   const id = Number(req.params.id);
 
@@ -376,19 +623,40 @@ export async function deleteArticle(req: Request, res: Response) {
   res.json({ ok: true });
 }
 
+// export async function getArticleBySlug(req: Request, res: Response) {
+//   const { slug } = req.params;
+
+//   const article = await prisma.article.findUnique({
+//     where: { slug },
+//     include: {
+//       category: true
+//     }
+//   });
+
+//   if (!article) {
+//     return res.status(404).json({ message: "Article not found" });
+//   }
+
+//   res.json(article);
+// }
 export async function getArticleBySlug(req: Request, res: Response) {
   const { slug } = req.params;
 
   const article = await prisma.article.findUnique({
     where: { slug },
     include: {
-      category: true
-    }
+      category: true,
+      author: { select: { id: true, name: true } },
+    },
   });
 
-  if (!article) {
+  if (!article || article.deletedAt) {
     return res.status(404).json({ message: "Article not found" });
   }
 
-  res.json(article);
+  res.json({
+    ...article,
+    images: safeParseJsonStringArray((article as any).image),
+    videos: safeParseJsonStringArray((article as any).video),
+  });
 }

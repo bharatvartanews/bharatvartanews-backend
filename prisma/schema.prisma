@@ -28,12 +28,6 @@ enum VideoStatus {
   REVIEW
   PUBLISHED
 }
-
-enum MediaType {
-  IMAGE
-  VIDEO
-}
-
 //////////////////////////////////////////////////////
 // USERS
 //////////////////////////////////////////////////////
@@ -85,9 +79,11 @@ model Article {
   status     ArticleStatus
   categoryId Int
   authorId   Int
+  authorName String?
 
   image      String?
   video      String?
+  media      ArticleMedia[]
 
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
@@ -104,6 +100,21 @@ model Article {
   @@index([authorId])
   @@index([deletedAt])
   @@index([createdAt])
+}
+model ArticleMedia {
+  id        Int      @id @default(autoincrement())
+  articleId Int
+  article   Article  @relation(fields: [articleId], references: [id])
+
+  type      MediaType // IMAGE | VIDEO | AUDIO
+  url       String
+
+  createdAt DateTime @default(now())
+}
+enum MediaType {
+  IMAGE
+  VIDEO
+  AUDIO
 }
 
 //////////////////////////////////////////////////////
