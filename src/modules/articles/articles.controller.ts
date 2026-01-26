@@ -365,7 +365,6 @@ export async function listArticles(req: Request, res: Response) {
         ...(q && { title: { contains: String(q), mode: "insensitive" } }),
       },
       include: {
-        author: { select: { id: true, name: true } },
         category: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -396,50 +395,15 @@ export async function getArticleById(req: Request, res: Response) {
     const rawId = req.params.id;
     const id = Number(rawId);
 
-    if (!rawId || Number.isNaN(id)) {
+    if (!rawId || Number.isNaN(id) || id <= 0) {
       return res.status(400).json({ message: "Invalid article id" });
     }
 
     const article = await prisma.article.findUnique({
       where: { id },
       include: {
-        author: { select: { id: true, name: true } },
         category: true,
-      },
-    });
-
-    if (!article || article.deletedAt) {
-      return res.status(404).json(null);
-    }
-
-    const images = safeParseJsonStringArray((article as any).image);
-    const videos = safeParseJsonStringArray((article as any).video);
-
-    res.json({
-      ...article,
-      ...toLegacyMedia(images, videos),
-      displayAuthor:
-        (article as any).authorName ||
-        (article as any).author?.name ||
-        `User #${(article as any).authorId}`,
-      ownerId: (article as any).authorId,
-    });
-  } catch (e) {
-    console.error("getArticleById error:", e);
-    res.status(500).json({ message: "Failed to load article" });
-  }
-}
-
-/* ---------------- GET BY SLUG ---------------- */
-export async function getArticleBySlug(req: Request, res: Response) {
-  try {
-    const { slug } = req.params;
-
-    const article = await prisma.article.findUnique({
-      where: { slug },
-      include: {
-        category: true,
-        author: { select: { id: true, name: true } },
+        author: { select: { id: true, name: true } }, // if relation exists
       },
     });
 
@@ -447,23 +411,50 @@ export async function getArticleBySlug(req: Request, res: Response) {
       return res.status(404).json({ message: "Article not found" });
     }
 
-    const images = safeParseJsonStringArray((article as any).image);
-    const videos = safeParseJsonStringArray((article as any).video);
-
-    res.json({
+    return res.json({
       ...article,
-      ...toLegacyMedia(images, videos),
+
+      // ✅ Always return arrays for frontend safety
+      image: safeParseJsonStringArray((article as any).image),
+      video: safeParseJsonStringArray((article as any).video),
+
+      // ✅ displayAuthor for admin/web
       displayAuthor:
         (article as any).authorName ||
         (article as any).author?.name ||
         `User #${(article as any).authorId}`,
+
+      // ✅ ownerId needed for admin permission logic
       ownerId: (article as any).authorId,
     });
-  } catch (e) {
-    console.error("getArticleBySlug error:", e);
-    res.status(500).json({ message: "Failed to load article" });
+  } catch (err) {
+    console.error("getArticleById error:", err);
+    return res.status(500).json({ message: "Failed to fetch article" });
   }
 }
+
+/* ---------------- GET BY SLUG ---------------- */
+export async function getArticleBySlug(req: Request, res: Response) {
+  const { slug } = req.params;
+
+  const article = await prisma.article.findUnique({
+    where: { slug },
+    include: { category: true },
+  });
+
+  if (!article || article.deletedAt) {
+    return res.status(404).json({ message: "Article not found" });
+  }
+
+  res.json({
+    ...article,
+    image: safeParseJsonStringArray((article as any).image),
+    video: safeParseJsonStringArray((article as any).video),
+    displayAuthor: (article as any).authorName || `User #${(article as any).authorId}`,
+    ownerId: (article as any).authorId,
+  });
+}
+
 
 /* ---------------- CREATE ---------------- */
 export async function createArticle(req: Request, res: Response) {
