@@ -57,9 +57,7 @@ export async function listArticles(req: Request, res: Response) {
       }),
     },
     include: {
-      author: {
-        select: { id: true, name: true, email: true },
-      },
+     author: { select: { id: true, name: true } },
       category: {
         select: { id: true, name: true },
       },
@@ -102,7 +100,9 @@ export async function getArticleById(req: Request, res: Response) {
     ...article,
     image: safeParseJsonStringArray((article as any).image),
     video: safeParseJsonStringArray((article as any).video),
-    displayAuthor: (article as any).authorName || (article as any).author?.name || `User #${(article as any).authorId}`,
+    displayAuthor: (article as any).authorName ||
+     (article as any).author?.name || 
+     `User #${(article as any).authorId}`,
     ownerId: (article as any).authorId,
   });
 }
@@ -137,7 +137,7 @@ export async function createArticle(req: Request, res: Response) {
   const uploadedVideos: string[] = [];
 
   if (files?.image?.length) {
-    for (const f of files.images) {
+    for (const f of files.image) {
       uploadedImages.push(
         await uploadToCloudinary(f, "bharatvarta/articles/images")
       );
@@ -145,7 +145,7 @@ export async function createArticle(req: Request, res: Response) {
   }
 
   if (files?.video?.length) {
-    for (const f of files.videos) {
+    for (const f of files.video) {
       uploadedVideos.push(
         await uploadToCloudinary(f, "bharatvarta/articles/videos")
       );
@@ -231,7 +231,7 @@ export async function updateArticle(req: Request, res: Response) {
   const uploadedVideos: string[] = [];
 
   if (files?.image?.length) {
-    for (const f of files.images) {
+    for (const f of files.image) {
       uploadedImages.push(
         await uploadToCloudinary(f, "bharatvarta/articles/images")
       );
@@ -239,7 +239,7 @@ export async function updateArticle(req: Request, res: Response) {
   }
 
   if (files?.video?.length) {
-    for (const f of files.videos) {
+    for (const f of files.video) {
       uploadedVideos.push(
         await uploadToCloudinary(f, "bharatvarta/articles/videos")
       );
