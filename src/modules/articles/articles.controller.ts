@@ -357,15 +357,27 @@ export async function listArticles(req: Request, res: Response) {
   try {
     const { status, categoryId, q } = req.query;
 
+    const where: any = { deletedAt: null };
+
+    if (status) where.status = status as any;
+
+    if (categoryId !== undefined) {
+      const cid = Number(categoryId);
+      if (Number.isNaN(cid)) {
+        return res.status(400).json({ message: "Invalid categoryId" });
+      }
+      where.categoryId = cid;
+    }
+
+    if (q) {
+      where.title = { contains: String(q), mode: "insensitive" };
+    }
+
     const articles = await prisma.article.findMany({
-      where: {
-        deletedAt: null,
-        ...(status && { status: status as any }),
-        ...(categoryId && { categoryId: Number(categoryId) }),
-        ...(q && { title: { contains: String(q), mode: "insensitive" } }),
-      },
+      where,
       include: {
-        category: { select: { id: true, name: true } },
+        category: { select: { id: true, name: true, slug: true } },
+        author: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -382,12 +394,13 @@ export async function listArticles(req: Request, res: Response) {
       };
     });
 
-    res.json(fixed);
+    return res.json(fixed);
   } catch (e) {
     console.error("listArticles error:", e);
-    res.status(500).json({ message: "Failed to fetch articles" });
+    return res.status(500).json({ message: "Failed to fetch articles" });
   }
 }
+
 
 /* ---------------- GET BY ID ---------------- */
 export async function getArticleById(req: Request, res: Response) {
