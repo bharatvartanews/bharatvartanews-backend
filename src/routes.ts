@@ -81,38 +81,7 @@ router.put(
 // ───────────────────────────────── ARTICLES ──────────────────────────────
 //
 router.get('/api/articles', Articles.listArticles); // public + dashboard filters
-router.get('/api/articles/:id', Articles.getArticleById); // public
-//router.post('/api/articles', Articles.createArticle);
-
-import { formDataOnly } from './utils/upload';
-
-// router.post(
-//   '/api/articles',
-//   (req, _res, next) => {
-//     console.log('🔥 BEFORE MULTER');
-//     next();
-//   },
-//   formDataOnly,
-//   (req, _res, next) => {
-//     console.log('🔥 AFTER MULTER BODY:', req.body);
-//     next();
-//   },
-//   Articles.createArticle
-// );
-
-// router.put(
-//   '/api/articles/:id',
-//   (req, _res, next) => {
-//     console.log('🔥 BEFORE MULTER');
-//     next();
-//   },
-//   formDataOnly,
-//   (req, _res, next) => {
-//     console.log('🔥 AFTER MULTER BODY:', req.body);
-//     next();
-//   },
-//   Articles.updateArticle
-// );
+//router.get('/api/articles/:id', Articles.getArticleById); // public
 
 import { articleUpload } from "./utils/upload";
 
@@ -151,7 +120,6 @@ router.put(
 // router.put('/api/articles/:id',  Articles.updateArticle);
 router.delete('/api/articles/:id',  Articles.deleteArticle);
 // ARTICLES (PUBLIC)
-//router.get('/api/articles/:slug', Articles.getArticleBySlug);
 router.get('/api/articles/id/:id', Articles.getArticleById);
 router.get('/api/articles/slug/:slug', Articles.getArticleBySlug);
 //

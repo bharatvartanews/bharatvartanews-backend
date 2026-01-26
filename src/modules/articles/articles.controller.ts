@@ -70,8 +70,8 @@ export async function listArticles(req: Request, res: Response) {
   // Optional: auto convert image/video json to arrays for frontend
   const fixed = articles.map((a: any) => ({
     ...a,
-    images: safeParseJsonStringArray(a.image),
-    videos: safeParseJsonStringArray(a.video),
+    image: safeParseJsonStringArray(a.image),
+    video: safeParseJsonStringArray(a.video),
     displayAuthor: a.authorName || a.author?.name || `User #${a.authorId}`,
     ownerId: a.authorId,
   }));
@@ -100,8 +100,8 @@ export async function getArticleById(req: Request, res: Response) {
 
   res.json({
     ...article,
-    images: safeParseJsonStringArray((article as any).image),
-    videos: safeParseJsonStringArray((article as any).video),
+    image: safeParseJsonStringArray((article as any).image),
+    video: safeParseJsonStringArray((article as any).video),
     displayAuthor: (article as any).authorName || (article as any).author?.name || `User #${(article as any).authorId}`,
     ownerId: (article as any).authorId,
   });
@@ -136,7 +136,7 @@ export async function createArticle(req: Request, res: Response) {
   const uploadedImages: string[] = [];
   const uploadedVideos: string[] = [];
 
-  if (files?.images?.length) {
+  if (files?.image?.length) {
     for (const f of files.images) {
       uploadedImages.push(
         await uploadToCloudinary(f, "bharatvarta/articles/images")
@@ -144,7 +144,7 @@ export async function createArticle(req: Request, res: Response) {
     }
   }
 
-  if (files?.videos?.length) {
+  if (files?.video?.length) {
     for (const f of files.videos) {
       uploadedVideos.push(
         await uploadToCloudinary(f, "bharatvarta/articles/videos")
@@ -230,7 +230,7 @@ export async function updateArticle(req: Request, res: Response) {
   const uploadedImages: string[] = [];
   const uploadedVideos: string[] = [];
 
-  if (files?.images?.length) {
+  if (files?.image?.length) {
     for (const f of files.images) {
       uploadedImages.push(
         await uploadToCloudinary(f, "bharatvarta/articles/images")
@@ -238,7 +238,7 @@ export async function updateArticle(req: Request, res: Response) {
     }
   }
 
-  if (files?.videos?.length) {
+  if (files?.video?.length) {
     for (const f of files.videos) {
       uploadedVideos.push(
         await uploadToCloudinary(f, "bharatvarta/articles/videos")
@@ -299,7 +299,7 @@ export async function getArticleBySlug(req: Request, res: Response) {
 
   res.json({
     ...article,
-    images: safeParseJsonStringArray((article as any).image),
-    videos: safeParseJsonStringArray((article as any).video),
+    image: safeParseJsonStringArray((article as any).image),
+    video: safeParseJsonStringArray((article as any).video),
   });
 }

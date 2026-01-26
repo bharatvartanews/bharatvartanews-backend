@@ -29,30 +29,6 @@ export const articleUpload = multer({
   { name: "audio", maxCount: 3 },
 ]);
 
-// export const categoryIconUpload = multer({
-//   storage: multer.diskStorage({
-//     destination: (_req, _file, cb) => {
-//       cb(null, 'uploads/categories');
-//     },
-//     filename: (_req, file, cb) => {
-//       const ext = path.extname(file.originalname);
-//       const name = path.basename(file.originalname, ext);
-//       cb(null, `${Date.now()}-${name}${ext}`);
-//     },
-//   }),
-// });
-
-// export const categoryIconUpload = multer({
-//   storage: multer.diskStorage({
-//     destination: 'uploads/categories',
-//     filename: (_req, file, cb) => {
-//       const ext = path.extname(file.originalname);
-//       cb(null, `${Date.now()}${ext}`);
-//     },
-//   }),
-// });
-
-
 export const categoryUpload = multer({
   storage: multer.diskStorage({
     destination: 'uploads/categories',
