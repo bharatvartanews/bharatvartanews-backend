@@ -41,7 +41,7 @@ export async function googleLogin(req: Request, res: Response) {
           email,
           name,
           googleId,
-          role: "REPORTER",
+          role: "PUBLIC_USER",
           active: true,
         },
       });

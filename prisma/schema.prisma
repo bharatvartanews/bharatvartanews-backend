@@ -166,6 +166,7 @@ enum Role {
   SUPER_ADMIN
   EDITOR
   REPORTER
+  PUBLIC_USER
 }
 
 enum ArticleStatus {
