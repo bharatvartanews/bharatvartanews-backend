@@ -35,6 +35,9 @@ router.post("/api/public/comments/report", Comments.reportComment);
 // ───────────────────────────────── AUTH ─────────────────────────────────
 //
 router.post('/api/auth/login', Auth.login);
+router.post("/api/auth/google", Auth.googleLogin);
+router.get("/api/auth/me", Auth.me);
+
 
 
 router.get('/api/home', Home.getHomeData);
