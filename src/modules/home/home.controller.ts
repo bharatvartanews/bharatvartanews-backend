@@ -39,26 +39,63 @@ export async function getHomeData(_: Request, res: Response) {
       slug: c.slug,
       icon: withAbsoluteIcon((c as any).icon ?? null),
     }));
+    const articlesRaw = await prisma.article.findMany({
+  where: {
+    status: ArticleStatus.PUBLISHED,
+    deletedAt: null,
+  },
+  orderBy: { createdAt: 'desc' },
+  take: 10,
+  select: {
+    id: true,
+    title: true,
+    slug: true,
+    body: true,
+    image: true,
+    video: true,
+    createdAt: true,
+    categoryId: true,
+    authorName: true,
+    author: {
+      select: {
+        name: true,
+      },
+    },
+  },
+});
+
 
     // 2️⃣ Articles – EXACT ENUM, NO deletedAt FILTER YET
-    const articles = await prisma.article.findMany({
-      where: {
-        status: ArticleStatus.PUBLISHED,
-         deletedAt: null
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        body: true,
-        image: true,
-        video: true, 
-        createdAt: true,
-        categoryId: true
-      }
-    });
+    // const articles = await prisma.article.findMany({
+    //   where: {
+    //     status: ArticleStatus.PUBLISHED,
+    //      deletedAt: null
+    //   },
+    //   orderBy: { createdAt: 'desc' },
+    //   take: 10,
+    //   select: {
+    //     id: true,
+    //     title: true,
+    //     slug: true,
+    //     body: true,
+    //     image: true,
+    //     video: true, 
+    //     createdAt: true,
+    //     categoryId: true,
+    //     authorName: true,
+    //   }
+    // });
+const articles = articlesRaw.map((a) => ({
+  id: a.id,
+  title: a.title,
+  slug: a.slug,
+  body: a.body,
+  image: a.image,
+  video: a.video,
+  createdAt: a.createdAt,
+  categoryId: a.categoryId,
+  authorName: a.authorName || a.author?.name || "Bharat Varta News",
+}));
 
     // 3️⃣ Top News – SAME TABLE, DIFFERENT SLICE
     const topNews = await prisma.article.findMany({

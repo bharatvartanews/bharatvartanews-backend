@@ -12,10 +12,10 @@ model User {
   name      String
   email     String    @unique
   password  String?
-  googleId  String?   @unique
   role      Role
   active    Boolean   @default(true)
   createdAt DateTime  @default(now())
+  googleId  String?   @unique
   articles  Article[]
   comments  Comment[]
 

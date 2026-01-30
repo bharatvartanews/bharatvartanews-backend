@@ -173,4 +173,18 @@ router.post('/api/analytics/video/:id/view', Analytics.trackVideoView);
 router.get('/api/settings', requireAuth, Settings.getSettings);
 router.put('/api/settings', requireAuth, Settings.updateSettings);
 
+/* ASTROLOGY (PUBLIC) */
+import * as Astrology from "./modules/astrology/astrology.controller";
+
+//
+// ───────────────────────────── ASTROLOGY (PUBLIC) ─────────────────────────
+//
+//
+// ───────────────────────── ASTROLOGY (PUBLIC) ─────────────────────────
+//
+router.post("/api/astrology/by-dob", Astrology.getHoroscopeByDob);
+router.get("/api/astrology/all", Astrology.getAllRashiGeneral);
+router.get("/api/astrology/:rashi", Astrology.getByRashi);
+
+
 export default router;
